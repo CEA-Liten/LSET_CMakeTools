@@ -1,13 +1,13 @@
 
 # Two ways:
-  # - WITH_EIGEN_INSTALL=ON : use fetchcontent to download and install EIGEN as a persee part
+  # - WITH_EIGEN_INSTALL=ON : use fetchcontent to download and install EIGEN as a cairn part
   # - User asks explicitely for a specific (already installed) version of EIGEN
   #   by providing EIGEN_ROOT on cmake command line.
   #   => find it and check the version
 
 if(WITH_EIGEN_INSTALL)
   include(FetchContent)
-  message(STATUS "EIGEN will be downloaded from github repository and installed as a persee component")
+  message(STATUS "EIGEN will be downloaded from gitlab repository and installed as a cairn component")
 
   set(FETCHCONTENT_QUIET OFF) # verbose mode for fetchcontent. Comment/uncomment according to your needs.
   

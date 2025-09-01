@@ -297,7 +297,7 @@ function(create_model MODELS)
         )
 
         include(EigenSetup)
-        find_package(Qt REQUIRED Core Xml)   
+        find_package(Qt REQUIRED Core)   
         find_package(Cairn REQUIRED CairnCore CairnModelInterface )
 
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPModeler)

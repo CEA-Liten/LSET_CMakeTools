@@ -1,13 +1,13 @@
 
 # Two ways:
-  # - WITH_HIGHS_INSTALL=ON : use fetchcontent to download and install HIGHS as a persee part
+  # - WITH_HIGHS_INSTALL=ON : use fetchcontent to download and install HIGHS as a cairn part
   # - User asks explicitely for a specific (already installed) version of Highs
   #   by providing HIGHS_ROOT on cmake command line.
   #   => find it and check the version
 
 if(WITH_HIGHS_INSTALL)
   include(FetchContent)
-  message(STATUS "HiGHS will be downloaded from github repository and installed as a persee component")
+  message(STATUS "HiGHS will be downloaded from github repository and installed as a cairn component")
 
   set(FETCHCONTENT_QUIET OFF) # verbose mode for fetchcontent. Comment/uncomment according to your needs.
   
