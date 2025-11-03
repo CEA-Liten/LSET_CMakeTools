@@ -63,7 +63,7 @@ if(CBC_FOUND)
         set_property(TARGET ${CBC_LIBRARY} PROPERTY IMPORTED_IMPLIB ${CBC_FULLLIBRARY})
         set_target_properties(${CBC_LIBRARY} PROPERTIES            
             OUTPUT_NAME "${CBC_LIBRARY}"
-            #IMPORTED_LOCATION "${COINOR_ROOT}/lib/${CMAKE_BUILD_TYPE}"   
+            IMPORTED_LOCATION "${COINOR_ROOT}/lib/${CMAKE_BUILD_TYPE}"   
             INTERFACE_INCLUDE_DIRECTORIES "${CBC_INCLUDE_DIR}"  
         )
        target_link_libraries(${COMPONENT} PUBLIC ${CBC_LIBRARY})

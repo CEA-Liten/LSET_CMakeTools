@@ -13,6 +13,10 @@ include(GNUInstallDirs)
 # - <COMPONENT>_DIRS : list of directories (path relative to CMAKE_SOURCE_DIR)
 #    that contain source files.
 # - <COMPONENT>_EXCLUDE_SRCS : list of files to exclude from build process
+# - <COMPONENT>_RESOURCES : list of qrc files
+# - <COMPONENT>_RESOURCES_DIR :  of directories (path relative to CMAKE_SOURCE_DIR)
+#    that contain resource files (icon, image, configuration, ...).
+
 #   for this component.
 #
 # This function:
@@ -23,10 +27,12 @@ function(create_component COMPONENT)
 
   # --- Collect source files from given directories ---
 
-  # --> Scan source directories and return a list of files
-  # to be compiled.  
+  # --> Scan source directories and return a list of files to be compiled.  
   get_sources(${COMPONENT} DIRS ${${COMPONENT}_DIRS} EXCLUDE ${${COMPONENT}_EXCLUDE_SRCS} INCLUDESRCS  ${${COMPONENT}_INCLUDE_SRCS})
   
+  # --> Scan resource directories and return a list of files to be included in target => ${COMPONENT}_INSTALLRESOURCES 
+  get_resources(${COMPONENT} DIRS ${${COMPONENT}_RESOURCES_DIR})
+
   # Create the library
   if(BUILD_EXE)
     add_executable(${COMPONENT} ${${COMPONENT}_SRCS} ${${COMPONENT}_RESOURCES})
@@ -143,7 +149,9 @@ function(component_install_setup COMPONENT)
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
         ARCHIVE DESTINATION ${runtime_LIBDIR}
         LIBRARY DESTINATION ${runtime_DESTINATION}    
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE})
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
+        RESOURCE DESTINATION resources
+        )
   endif()
 
 
@@ -184,7 +192,7 @@ function(component_install_setup COMPONENT)
       )
   endif()
 
-  # TODO: !!!problèmes dans la génération des qm
+  # TODO: !!!problï¿½mes dans la gï¿½nï¿½ration des qm
   #if(${COMPONENT}_TRANSLATION)
   #   message("-- Install translations for ${COMPONENT}, ${${COMPONENT}_TRANSLATIONS_FILES}")
   #   install(
@@ -297,12 +305,14 @@ function(create_model MODELS)
         )
 
         include(EigenSetup)
-        find_package(Qt REQUIRED Core)   
+        include(SpdlogSetup)        
         find_package(Cairn REQUIRED CairnCore CairnModelInterface )
-
+                
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPModeler)
+        target_link_libraries(${COMPONENT} PRIVATE mipmodeler::ModelerInterface)
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPSolver)
         target_link_libraries(${COMPONENT} PRIVATE Eigen3::Eigen)
+        target_link_libraries(${COMPONENT} PRIVATE spdlog::spdlog)
 
         if (${_NAMEMODEL}_LINKEDMODELS)                     
             foreach(_MODEL_LINK IN LISTS ${_NAMEMODEL}_LINKEDMODELS)

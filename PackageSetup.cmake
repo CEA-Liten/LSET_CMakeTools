@@ -2,10 +2,24 @@
 set(installed_targets ${installed_targets}
   CACHE INTERNAL "List of installed libraries for the project.")
 
+
 set(ConfigPackageFile ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}-config.cmake.in)
+message("-- ConfigPackageFile: ${ConfigPackageFile}")
 if (NOT EXISTS "${ConfigPackageFile}")
 	set(ConfigPackageFile ${CMAKE_SOURCE_DIR}/cmake/${PROJECT_NAME}-config.cmake.in)
+	message("-- ConfigPackageFile: ${ConfigPackageFile}")
+	if (NOT EXISTS "${ConfigPackageFile}")
+		message("-- ConfigPackageFile, list: ${CMAKE_MODULE_PATH}")
+		foreach (dir IN LISTS CMAKE_MODULE_PATH)
+			message("-- ConfigPackageFile, dir: ${dir}")
+			if (EXISTS "${dir}/${PROJECT_NAME}-config.cmake.in")
+				set(ConfigPackageFile ${dir}/${PROJECT_NAME}-config.cmake.in)
+				break()
+		endif()
+		endforeach()
+	endif()
 endif()
+
 message("-- ConfigPackageFile: ${ConfigPackageFile}")
 set(ConfigPackageLocation  ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 # ===== Package configuration file ====

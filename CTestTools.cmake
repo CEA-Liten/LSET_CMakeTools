@@ -24,24 +24,22 @@ function(add_tests SOURCE_DIR)
 	# to be compiled.
 	get_sources(${TEST_NAME}_EXTRA DIRS ${TEST_EXTRA_DIR_SRC})
 
-	message("no test: ${TEST_EXCLUDE_TESTS}")
+	message("exclude tests: ${TEST_EXCLUDE_TESTS}")
 	get_sources(${TEST_NAME} DIRS ${SOURCE_DIR} EXCLUDE ${TEST_EXCLUDE_TESTS})
 	message("tests: ${${TEST_NAME}_SRCS}")
 	
 	# one file = one test
 	foreach(src IN LISTS ${TEST_NAME}_SRCS)		
 		get_filename_component(_unitTest ${src} NAME_WE)		
-		add_testUnit(${TEST_NAME}_${_unitTest} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS})
+		add_testUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS})
 	endforeach()
 
 endfunction()
 
-function(add_testUnit TESTUNIT_NAME TEST_SRC)
+function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 	set(multiValueArgs DEPS EXTRA_SRCS)
 	cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-	
-	message("TEST_SRC : ${TEST_SRC}")
-	message("EXTRA_DIR_SRC : ${TEST_EXTRA_DIR_SRC}")
+		
 	add_executable(${TESTUNIT_NAME} ${TEST_SRC} ${TEST_EXTRA_SRCS})
 	# -- link with current component and its dependencies --
 	# --> add include and links
@@ -52,6 +50,9 @@ function(add_testUnit TESTUNIT_NAME TEST_SRC)
 	endforeach()	
 
 	# add include 'utils'	
+	target_include_directories(${TESTUNIT_NAME} PRIVATE
+		$<BUILD_INTERFACE:${TESTUNIT_DIR}>)
+	
 	target_include_directories(${TESTUNIT_NAME} PRIVATE
 		$<BUILD_INTERFACE:${TEST_EXTRA_DIR_SRC}>)
 	

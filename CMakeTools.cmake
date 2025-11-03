@@ -29,6 +29,7 @@ function(collect_files)
 
 endfunction()
 
+
 # Collect source files.
 #
 # Usage:
@@ -73,6 +74,21 @@ function(get_sources COMPONENT)
 
 endfunction()
 
+function(get_resources COMPONENT)
+
+  set(multiValueArgs DIRS EXCLUDE)
+  cmake_parse_arguments(source "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+  
+  collect_files(VAR SOURCES_FILES DIRS ${source_DIRS} EXTS "*")
+  
+  # Check if some sources are to be excluded from build
+  foreach(_FILE IN LISTS source_EXCLUDE)
+    list(REMOVE_ITEM SOURCES_FILES ${_FILE})
+  endforeach()
+
+  set(${COMPONENT}_INSTALLRESOURCES ${SOURCES_FILES} PARENT_SCOPE)
+
+endfunction()
 
 
 # Try to provide some hints for a find_package call.

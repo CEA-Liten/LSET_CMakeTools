@@ -61,7 +61,7 @@ if(CLP_FOUND)
         set_property(TARGET ${CLP_LIBRARY} PROPERTY IMPORTED_IMPLIB ${CLP_FULLLIBRARY})
         set_target_properties(${CLP_LIBRARY} PROPERTIES            
             OUTPUT_NAME "${CLP_LIBRARY}"
-            #IMPORTED_LOCATION "${COINOR_ROOT}/lib/${CMAKE_BUILD_TYPE}"   
+            IMPORTED_LOCATION "${COINOR_ROOT}/lib/${CMAKE_BUILD_TYPE}"   
             INTERFACE_INCLUDE_DIRECTORIES "${CLP_INCLUDE_DIR}"  
         )
        target_link_libraries(${COMPONENT} PUBLIC ${CLP_LIBRARY})

@@ -33,8 +33,7 @@ if(WITH_HIGHS_INSTALL)
   set(HIGHS_DIR ${CMAKE_INSTALL_PREFIX} CACHE INTERNAL "") 
   message(STATUS "Built, installed and used highs, version ${HIGHS_VERSION} in ${HIGHS_DIR}.")
   
-elseif(HIGHS_ROOT)  
-  set(HIGHS_DIR ${HIGHS_ROOT}/${CMAKE_BUILD_TYPE}/lib/cmake/highs)
-  find_package(HIGHS REQUIRED)  
+else()    
+  find_package(highs REQUIRED)  
 endif()
 
