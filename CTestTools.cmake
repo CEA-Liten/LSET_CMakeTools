@@ -7,11 +7,21 @@ include(CMakeTools)
 #    add_tests(<SOURCE_DIR_TESTS>)
 #    add_tests(<SOURCE_DIR_TESTS> DEPS <dep1;dep2 ...>)		add extra deps
 #	 add_tests(<SOURCE_DIR_TESTS> DATA <DATA_DIR_TESTS>)	
+# Full signature:
+#	 add_tests(<SOURCE_DIR_TESTS> 
+#			[QTESTS]			
+#			[DATA <DATA_DIR_TESTS>]
+#			[RESULTS <RESULTS_DIR_TESTS>]
+#			[DEPS <dep1;dep2 ...>]
+#			[EXTRA_DIR_SRC <dir1;dir2; ...>]
+#			[EXTRA_RESOURCES <rc1; rc2; ...>]
+#			[EXCLUDE_TESTS <tests1;tests2 ...>]
+#	 )	
 # =========================================================
 function(add_tests SOURCE_DIR)
-
+	set(options QTESTS)
 	set(oneValueArgs DATA RESULTS)
-	set(multiValueArgs DEPS EXTRA_DIR_SRC EXCLUDE_TESTS)
+	set(multiValueArgs DEPS EXTRA_DIR_SRC EXCLUDE_TESTS EXTRA_RESOURCES)
 	cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
 
 	set(TEST_NAME TEST_${COMPONENT})
@@ -30,8 +40,12 @@ function(add_tests SOURCE_DIR)
 	
 	# one file = one test
 	foreach(src IN LISTS ${TEST_NAME}_SRCS)		
-		get_filename_component(_unitTest ${src} NAME_WE)		
-		add_testUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS})
+		get_filename_component(_unitTest ${src} NAME_WE)	
+		if (${TEST_QTESTS})
+			add_qtestUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS} EXTRA_RESOURCES ${TEST_EXTRA_RESOURCES})
+		else()
+			add_testUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS})
+		endif()
 	endforeach()
 
 endfunction()
@@ -39,7 +53,7 @@ endfunction()
 function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 	set(multiValueArgs DEPS EXTRA_SRCS)
 	cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-		
+			
 	add_executable(${TESTUNIT_NAME} ${TEST_SRC} ${TEST_EXTRA_SRCS})
 	# -- link with current component and its dependencies --
 	# --> add include and links
@@ -55,7 +69,10 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 	
 	target_include_directories(${TESTUNIT_NAME} PRIVATE
 		$<BUILD_INTERFACE:${TEST_EXTRA_DIR_SRC}>)
-	
+	if(MSVC)
+		# problem with msvc, see  https://stackoverflow.com/questions/78598141/first-stdmutexlock-crashes-in-application-built-with-latest-visual-studio
+		target_compile_definitions(${TESTUNIT_NAME} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+	endif()
 
 	# Link with extra deps
 	foreach(libtarget IN LISTS TEST_DEPS)		
@@ -66,6 +83,55 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 			target_link_libraries(${TESTUNIT_NAME} PRIVATE "${libtarget}")
 		endif()
 
+	endforeach()
+
+	# -- set test command --
+	set(command ${TESTUNIT_NAME})
+	if(CMAKE_SYSTEM_NAME MATCHES Windows)
+		set(command ${command}.exe)
+	endif()
+	# Add the test in the pipeline
+	add_test(NAME ${TESTUNIT_NAME} COMMAND ${command} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+	set_property(TEST "${TESTUNIT_NAME}" PROPERTY LABELS TESTLABEL ${COMPONENT})
+	message("add test ${TESTUNIT_NAME} in  ${CMAKE_CURRENT_BINARY_DIR}")
+endfunction()
+
+function(add_qtestUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
+	set(multiValueArgs DEPS EXTRA_SRCS EXTRA_RESOURCES)
+	cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+	
+	message("${COMPONENT}_RESOURCES: ${TEST_EXTRA_RESOURCES}")
+	add_executable(${TESTUNIT_NAME} ${TEST_SRC} ${TEST_EXTRA_SRCS} ${TEST_EXTRA_RESOURCES})
+		
+	# -- link with current component and its dependencies --
+	# --> add include and links
+	#target_link_libraries(${TESTUNIT_NAME} PRIVATE ${COMPONENT})
+	foreach(dir IN LISTS ${COMPONENT}_DIRS)
+		target_include_directories(${TESTUNIT_NAME} PRIVATE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${dir}>)
+	endforeach()	
+
+	# add include 'utils'	
+	target_include_directories(${TESTUNIT_NAME} PRIVATE
+		$<BUILD_INTERFACE:${TESTUNIT_DIR}>)
+	
+	target_include_directories(${TESTUNIT_NAME} PRIVATE
+		$<BUILD_INTERFACE:${TEST_EXTRA_DIR_SRC}>)
+	if(MSVC)
+		# problem with msvc, see  https://stackoverflow.com/questions/78598141/first-stdmutexlock-crashes-in-application-built-with-latest-visual-studio
+		target_compile_definitions(${TESTUNIT_NAME} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+	endif()
+
+	# link with Qt Test
+	set(COMPONENT_SAVE ${COMPONENT})
+	set(COMPONENT ${TESTUNIT_NAME})
+	find_package(Qt REQUIRED COMPONENTS Core Quick Gui Xml Widgets Location Positioning AxContainer Concurrent Test)		
+	set(COMPONENT ${COMPONENT_SAVE})
+
+	# Link with extra deps
+	foreach(libtarget IN LISTS TEST_DEPS)		
+		message("libtarget: ${libtarget}")
+		target_link_libraries(${TESTUNIT_NAME} PRIVATE "${libtarget}")		
 	endforeach()
 
 	# -- set test command --

@@ -48,6 +48,10 @@ function(create_component COMPONENT)
   # Set compiler options
   string(TOUPPER ${COMPONENT} UPPERCOMPONENT)
   target_compile_definitions(${COMPONENT} PRIVATE -D${UPPERCOMPONENT}_LIBRARY)
+  if(MSVC)
+    # problem with msvc, see  https://stackoverflow.com/questions/78598141/first-stdmutexlock-crashes-in-application-built-with-latest-visual-studio
+	 target_compile_definitions(${COMPONENT} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+  endif()
 
   # reminder : WARNINGS_LEVEL=0 -> no warnings, =1, developers mininmal set of warnings,
   # =2 : strict mode, warnings to errors.
@@ -130,9 +134,7 @@ function(component_install_setup COMPONENT)
     set(runtime_INCLUDE ${PROJECT_NAME}/${COMPONENT})
   endif()
   
-  # libraries
-  if(CMAKE_SYSTEM_NAME MATCHES Windows)
-      install(TARGETS ${COMPONENT}
+  install(TARGETS ${COMPONENT}
         EXPORT ${PROJECT_NAME}Targets
         RUNTIME DESTINATION ${runtime_DESTINATION}    
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
@@ -140,20 +142,8 @@ function(component_install_setup COMPONENT)
         LIBRARY DESTINATION ${runtime_LIBDIR}    
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
         RESOURCE DESTINATION resources
-      )
-
-  else()
-      install(TARGETS ${COMPONENT}
-        EXPORT ${PROJECT_NAME}Targets
-        RUNTIME DESTINATION ${runtime_DESTINATION}    
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
-        ARCHIVE DESTINATION ${runtime_LIBDIR}
-        LIBRARY DESTINATION ${runtime_DESTINATION}    
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
-        RESOURCE DESTINATION resources
         )
-  endif()
-
+  
 
   
   #target_include_directories(${COMPONENT} INTERFACE
@@ -307,12 +297,14 @@ function(create_model MODELS)
         include(EigenSetup)
         include(SpdlogSetup)        
         find_package(Cairn REQUIRED CairnCore CairnModelInterface )
-                
+        target_compile_definitions(${COMPONENT} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+
+        target_link_libraries(${COMPONENT} PRIVATE CAIRN::CAIRN)
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPModeler)
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::ModelerInterface)
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPSolver)
         target_link_libraries(${COMPONENT} PRIVATE Eigen3::Eigen)
-        target_link_libraries(${COMPONENT} PRIVATE spdlog::spdlog)
+        target_link_libraries(${COMPONENT} PRIVATE spdlog::spdlog_header_only)
 
         if (${_NAMEMODEL}_LINKEDMODELS)                     
             foreach(_MODEL_LINK IN LISTS ${_NAMEMODEL}_LINKEDMODELS)

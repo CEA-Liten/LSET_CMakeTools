@@ -1,6 +1,23 @@
 #
 # Some convenience macros
 #
+function(python_venv PY_ENV PY_EXE PY_REQS)
+
+    # create virtual environment
+    message("create build environment: ${PY_ENV}")
+    execute_process (COMMAND "${PY_EXE}" -m venv "${PY_ENV}" COMMAND_ERROR_IS_FATAL ANY)
+
+    if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
+	    set(PythonCMD ${PY_ENV}/scripts/pip)
+    else()
+	    set(PythonCMD ${PY_ENV}/bin/pip)
+    endif()
+    message("PythonCMD: ${PythonCMD}")
+    execute_process(COMMAND ${PythonCMD} install -r "${PY_REQS}")
+
+endfunction()
+
+
 
 function(collect_files)
 
@@ -179,6 +196,10 @@ function(apply_compiler_options COMPONENT)
   #   $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Wsuggest-final-methods>)
   # Warn when a literal ‘0’ is used as null pointer constant.
   #list(APPEND COMP_OPTIONS $<$<COMPILE_LANGUAGE:CXX>:-Wzero-as-null-pointer-constant>)
+ if(MSVC)
+    list(APPEND COMP_OPTIONS /wd4828)    
+    add_compile_options(/wd4828)
+endif()
   if(WITH_SERIALIZATION)
     list(APPEND COMP_OPTIONS -ftemplate-depth=1024)
   endif(WITH_SERIALIZATION)
