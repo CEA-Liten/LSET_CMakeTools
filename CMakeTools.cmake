@@ -1,20 +1,39 @@
 #
 # Some convenience macros
 #
-function(python_venv PY_ENV PY_EXE PY_REQS)
-
-    # create virtual environment
-    message("create build environment: ${PY_ENV}")
-    execute_process (COMMAND "${PY_EXE}" -m venv "${PY_ENV}" COMMAND_ERROR_IS_FATAL ANY)
-
-    if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
-	    set(PythonCMD ${PY_ENV}/scripts/pip)
-    else()
-	    set(PythonCMD ${PY_ENV}/bin/pip)
+function(python_venv PY_ENV PY_EXE)
+    set(options FORCE)
+    set(oneValueArgs REQS PCK)
+    cmake_parse_arguments(PYVENV "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    message("PYVENV_FORCE: ${PYVENV_FORCE}")    
+    # create virtual environment if not exist
+    if (NOT EXISTS ${PY_ENV})
+        message("create build environment: ${PY_ENV}")
+        execute_process (COMMAND "${PY_EXE}" -m venv "${PY_ENV}" COMMAND_ERROR_IS_FATAL ANY)
+        set(PY_VENV_FORCE ON)        
     endif()
-    message("PythonCMD: ${PythonCMD}")
-    execute_process(COMMAND ${PythonCMD} install -r "${PY_REQS}")
-
+    if (${PYVENV_FORCE})
+        if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
+	        set(PythonPipCMD ${PY_ENV}/scripts/pip)
+            set(PythonCMD ${PY_ENV}/scripts/python)
+        else()
+	        set(PythonPipCMD ${PY_ENV}/bin/pip)
+            set(PythonCMD ${PY_ENV}/bin/python)
+        endif()
+        
+        if (EXISTS ${PYVENV_REQS})            
+            execute_process(COMMAND ${PythonPipCMD} install -r "${PYVENV_REQS}")
+        endif()
+        if (PYVENV_PCK)                   
+            #execute_process(
+            #    COMMAND ${PythonCMD} -c "import ${PYVENV_PCK}"
+            #    RESULT_VARIABLE EXIT_CODE
+            #    OUTPUT_QUIET
+            #)
+            #message("install PYVENV_PCK: ${EXIT_CODE}")
+            execute_process(COMMAND ${PythonPipCMD} install ${PYVENV_PCK})
+        endif()
+    endif()
 endfunction()
 
 

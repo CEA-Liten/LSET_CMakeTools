@@ -37,7 +37,11 @@ function(create_component COMPONENT)
   if(BUILD_EXE)
     add_executable(${COMPONENT} ${${COMPONENT}_SRCS} ${${COMPONENT}_RESOURCES})
   elseif(BUILD_PYBIND)  
-    pybind11_add_module(${COMPONENT} SHARED ${${COMPONENT}_SRCS})
+        if(MSVC)
+            pybind11_add_module(${COMPONENT} SHARED ${${COMPONENT}_SRCS})
+        else()
+            pybind11_add_module(${COMPONENT}  ${${COMPONENT}_SRCS})
+        endif()
   elseif(BUILD_SHARED_LIBS)
     add_library(${COMPONENT} SHARED ${${COMPONENT}_SRCS} ${${COMPONENT}_RESOURCES})
   else()
@@ -92,8 +96,8 @@ function(create_component COMPONENT)
       
   set_target_properties(${COMPONENT} PROPERTIES
     OUTPUT_NAME "${COMPONENT}"
-    VERSION "${PROJECT_SOVERSION}"  
-    SOVERSION "${PROJECT_SOVERSION_MAJOR}"
+    #VERSION "${PROJECT_SOVERSION}"  
+    #SOVERSION "${PROJECT_SOVERSION_MAJOR}"
     RESOURCE "${${COMPONENT}_INSTALLRESOURCES}"
     #POSITION_INDEPENDENT_CODE ON
     #INTERFACE_POSITION_INDEPENDENT_CODE ON
@@ -298,8 +302,14 @@ function(create_model MODELS)
         include(SpdlogSetup)        
         find_package(Cairn REQUIRED CairnCore CairnModelInterface )
         target_compile_definitions(${COMPONENT} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+        target_compile_definitions(${COMPONENT} PRIVATE -DEIGEN_MPL2_ONLY)
 
-        target_link_libraries(${COMPONENT} PRIVATE CAIRN::CAIRN)
+        if (WITH_PYBIND)
+        target_link_libraries(${COMPONENT} PRIVATE cairn::CairnCore)
+            target_link_libraries(${COMPONENT} PRIVATE cairn::CairnModelInterface)
+        else()
+            target_link_libraries(${COMPONENT} PRIVATE CAIRN::CAIRN)
+        endif()
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPModeler)
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::ModelerInterface)
         target_link_libraries(${COMPONENT} PRIVATE mipmodeler::MIPSolver)
@@ -310,7 +320,11 @@ function(create_model MODELS)
             foreach(_MODEL_LINK IN LISTS ${_NAMEMODEL}_LINKEDMODELS)
                 set(CAIRNMODEL_LINK ${_MODEL_LINK}${MODELS_SFX}) 
                 message("-- link ${CAIRNMODEL_LINK}") 
-                target_link_libraries(${COMPONENT} PRIVATE CairnModels::${CAIRNMODEL_LINK})    
+                if (WITH_PYBIND)
+                    target_link_libraries(${COMPONENT} PRIVATE cairn::${CAIRNMODEL_LINK})    
+                else()
+                    target_link_libraries(${COMPONENT} PRIVATE CairnModels::${CAIRNMODEL_LINK})    
+                endif()                
             endforeach()            
         endif()
 
@@ -321,7 +335,7 @@ function(create_model MODELS)
         component_install_setup(${COMPONENT} INCLUDE  ${PROJECT_NAME}/models)
 
 
-        list(APPEND list_models ${COMPONENT})
+        list(APPEND list_models "${_NAMEMODEL}:${MODELS}")
 
         
     endforeach() 

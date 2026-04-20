@@ -63,4 +63,4 @@ else()
     find_package(Eigen3)
     message(STATUS "eigen_FOUND: ${Eigen3_FOUND}") 
 endif()
-target_compile_definitions(${COMPONENT} PRIVATE -DEIGEN_MPL2_ONLY)
+

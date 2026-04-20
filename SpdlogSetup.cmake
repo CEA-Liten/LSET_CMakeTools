@@ -62,7 +62,7 @@ if(WITH_spdlog_INSTALL OR (NOT SPDLOG_IS_INSTALLED))
   message(STATUS "Built, installed and used spdlog, version ${SPDLOG_VERSION} in ${SPDLOG_DIR}.")
   
 else()
-  find_package(spdlog REQUIRED)  
+  find_package(spdlog REQUIRED CONFIG)  
   message(STATUS "spdlog_FOUND: ${spdlog_FOUND}") 
 
 endif()

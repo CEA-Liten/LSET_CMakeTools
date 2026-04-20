@@ -74,6 +74,17 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 		target_compile_definitions(${TESTUNIT_NAME} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 	endif()
 
+	# coverage
+	if(TEST_WITH_COVERAGE)
+		if(CMAKE_COMPILER_IS_GNUCXX)
+			include(CodeCoverage)
+			append_coverage_compiler_flags_to_target(${TESTUNIT_NAME})
+			#target_compile_options(${TESTUNIT_NAME} PRIVATE --coverage)
+			#target_link_options(${TESTUNIT_NAME} PRIVATE --coverage)
+			set(${TESTUNIT_NAME}_WITHCOVERAGE 1)			
+		endif()
+	endif()
+
 	# Link with extra deps
 	foreach(libtarget IN LISTS TEST_DEPS)		
 		if ("${libtarget}" STREQUAL "Qt5")
@@ -93,7 +104,17 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 	# Add the test in the pipeline
 	add_test(NAME ${TESTUNIT_NAME} COMMAND ${command} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 	set_property(TEST "${TESTUNIT_NAME}" PROPERTY LABELS TESTLABEL ${COMPONENT})
-	message("add test ${TESTUNIT_NAME} in  ${CMAKE_CURRENT_BINARY_DIR}")
+
+	if (${TESTUNIT_NAME}_WITHCOVERAGE)
+		message("add test ${TESTUNIT_NAME} with tests coverage in ${CMAKE_CURRENT_BINARY_DIR}")
+	else()
+		message("add test ${TESTUNIT_NAME} in ${CMAKE_CURRENT_BINARY_DIR}")
+	endif()
+
+	
+
+
+
 endfunction()
 
 function(add_qtestUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
