@@ -44,16 +44,19 @@ function(add_tests SOURCE_DIR)
 		if (${TEST_QTESTS})
 			add_qtestUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS} EXTRA_RESOURCES ${TEST_EXTRA_RESOURCES})
 		else()
-			add_testUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS})
+			add_testUnit(${TEST_NAME}_${_unitTest} ${SOURCE_DIR} ${src} DEPS ${TEST_DEPS} EXTRA_SRCS ${${TEST_NAME}_EXTRA_SRCS} EXTRA_DIR_SRC ${TEST_EXTRA_DIR_SRC})
 		endif()
 	endforeach()
 
 endfunction()
 
 function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
-	set(multiValueArgs DEPS EXTRA_SRCS)
+	set(multiValueArgs DEPS EXTRA_SRCS EXTRA_DIR_SRC ARGS)
 	cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-			
+		
+	if (NOT DEFINED TEST_EXTRA_SRCS)		
+		get_sources(TEST_EXTRA DIRS ${TEST_EXTRA_DIR_SRC})		
+	endif()
 	add_executable(${TESTUNIT_NAME} ${TEST_SRC} ${TEST_EXTRA_SRCS})
 	# -- link with current component and its dependencies --
 	# --> add include and links
@@ -73,7 +76,12 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 		# problem with msvc, see  https://stackoverflow.com/questions/78598141/first-stdmutexlock-crashes-in-application-built-with-latest-visual-studio
 		target_compile_definitions(${TESTUNIT_NAME} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 	endif()
-
+	if (WITH_PRIVATEMODELS)
+		target_compile_definitions(${TESTUNIT_NAME} PRIVATE -DPRIVATE_MODELS)
+	endif()
+	if (USE_CPLEX)
+		target_compile_definitions(${TESTUNIT_NAME} PRIVATE -DUSE_CPLEX)
+	endif()
 	# coverage
 	if(TEST_WITH_COVERAGE)
 		if(CMAKE_COMPILER_IS_GNUCXX)
@@ -102,7 +110,7 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 		set(command ${command}.exe)
 	endif()
 	# Add the test in the pipeline
-	add_test(NAME ${TESTUNIT_NAME} COMMAND ${command} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+	add_test(NAME ${TESTUNIT_NAME} COMMAND ${command} ${TEST_ARGS} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 	set_property(TEST "${TESTUNIT_NAME}" PROPERTY LABELS TESTLABEL ${COMPONENT})
 
 	if (${TESTUNIT_NAME}_WITHCOVERAGE)
@@ -110,10 +118,6 @@ function(add_testUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 	else()
 		message("add test ${TESTUNIT_NAME} in ${CMAKE_CURRENT_BINARY_DIR}")
 	endif()
-
-	
-
-
 
 endfunction()
 
@@ -166,3 +170,108 @@ function(add_qtestUnit TESTUNIT_NAME TESTUNIT_DIR TEST_SRC)
 	message("add test ${TESTUNIT_NAME} in  ${CMAKE_CURRENT_BINARY_DIR}")
 endfunction()
 
+
+function(create_genericTest GENERICTEST_NAME TESTUNIT_DIR TEST_SRC)
+	set(multiValueArgs DEPS EXTRA_SRCS EXTRA_DIR_SRC)
+	cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+		
+	if (NOT DEFINED TEST_EXTRA_SRCS)		
+		get_sources(TEST_EXTRA DIRS ${TEST_EXTRA_DIR_SRC})		
+	endif()
+	add_executable(${GENERICTEST_NAME} ${TEST_SRC} ${TEST_EXTRA_SRCS})
+	# -- link with current component and its dependencies --
+	# --> add include and links
+	target_link_libraries(${GENERICTEST_NAME} PRIVATE ${COMPONENT})
+	foreach(dir IN LISTS ${COMPONENT}_DIRS)
+		target_include_directories(${GENERICTEST_NAME} PRIVATE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${dir}>)
+	endforeach()	
+
+	# add include 'utils'	
+	target_include_directories(${GENERICTEST_NAME} PRIVATE
+		$<BUILD_INTERFACE:${TESTUNIT_DIR}>)
+	
+	target_include_directories(${GENERICTEST_NAME} PRIVATE
+		$<BUILD_INTERFACE:${TEST_EXTRA_DIR_SRC}>)
+	if(MSVC)
+		# problem with msvc, see  https://stackoverflow.com/questions/78598141/first-stdmutexlock-crashes-in-application-built-with-latest-visual-studio
+		target_compile_definitions(${GENERICTEST_NAME} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+	endif()
+	if (WITH_PRIVATEMODELS)
+		target_compile_definitions(${GENERICTEST_NAME} PRIVATE -DPRIVATE_MODELS)
+	endif()
+	if (USE_CPLEX)
+		target_compile_definitions(${GENERICTEST_NAME} PRIVATE -DUSE_CPLEX)
+	endif()
+	# coverage
+	if(TEST_WITH_COVERAGE)
+		if(CMAKE_COMPILER_IS_GNUCXX)
+			include(CodeCoverage)
+			append_coverage_compiler_flags_to_target(${GENERICTEST_NAME})					
+		endif()
+	endif()
+
+	# Link with extra deps
+	foreach(libtarget IN LISTS TEST_DEPS)				
+		target_link_libraries(${GENERICTEST_NAME} PRIVATE "${libtarget}")		
+	endforeach()
+endfunction()
+
+
+function(add_genericTestCase GENERICTEST_NAME TESTUNIT_NAME TESTUNIT_ARG)
+
+	# -- set test command --
+	set(command ${GENERICTEST_NAME})
+	if(CMAKE_SYSTEM_NAME MATCHES Windows)
+		set(command ${command}.exe)
+	endif()
+	# Add the test in the pipeline
+	add_test(NAME ${TESTUNIT_NAME} COMMAND ${command} ${TESTUNIT_ARG} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+	set_property(TEST "${TESTUNIT_NAME}" PROPERTY LABELS TESTLABEL ${COMPONENT})
+	
+	set_tests_properties(
+		${TESTUNIT_NAME}
+		PROPERTIES
+		ENVIRONMENT_MODIFICATION "PATH=path_list_append:$<TARGET_FILE_DIR:${COMPONENT}>"
+	)
+	message("add test ${TESTUNIT_NAME}, ${TESTUNIT_ARG}")
+	
+
+endfunction()
+
+
+function(add_genericTestSuite TESTSUITE_DIR TESTSUITE_NAME)
+	# get json files
+	collect_files(VAR _TEST_PROJECT_FILE DIRS ${TESTSUITE_DIR} EXTS "json")
+	list(LENGTH _TEST_PROJECT_FILE _FILES_LEN)		
+	# loop on json files
+	foreach(_file_loc ${_TEST_PROJECT_FILE})
+		get_filename_component(_file ${_file_loc} NAME_WE)
+		set(TEST_NAME TESTNR_${COMPONENT}_${TESTSUITE_NAME})
+		if (_FILES_LEN GREATER 1)
+			set(TEST_NAME TESTNR_${COMPONENT}_${TESTSUITE_NAME}_${_file})
+		endif()						
+		add_genericTestCase(GenericTests ${TEST_NAME}
+			--case:${TESTSUITE_DIR}/${_file}.json
+		)
+	endforeach()
+
+	# loop on subdirectories	
+	get_subdirectories(TESTCASE_DIRS ${TESTSUITE_DIR})	
+	foreach(_tnr ${TESTCASE_DIRS})
+		# directory must start with <func_>
+		string(FIND ${_tnr} "func_" out)
+		if("${out}" EQUAL 0)			
+			add_genericTestSuite(${TESTSUITE_DIR}/${_tnr} ${TESTSUITE_NAME}_${_tnr})
+		endif()		
+	endforeach()
+
+endfunction()
+
+function(add_genericTests TESTS_SUBDIR)
+	get_subdirectories(TEST_DIRS ${CAIRNTESTS_HOME}/${TESTS_SUBDIR})	
+	# loop on subdirectories
+	foreach(_tnr ${TEST_DIRS})
+		add_genericTestSuite(${CAIRNTESTS_HOME}/${TESTS_SUBDIR}/${_tnr} ${_tnr})
+	endforeach()
+endfunction()

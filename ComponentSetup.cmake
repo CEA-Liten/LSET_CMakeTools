@@ -334,11 +334,13 @@ function(create_model MODELS)
         )
         component_install_setup(${COMPONENT} INCLUDE  ${PROJECT_NAME}/models)
 
+        # Exclude MyModel which is used as a template
+        if(NOT _NAMEMODEL STREQUAL "MyModel")
+            list(APPEND list_models "${_NAMEMODEL}:${MODELS}")
+        endif()
 
-        list(APPEND list_models "${_NAMEMODEL}:${MODELS}")
-
-        
     endforeach() 
+
     list(REMOVE_DUPLICATES list_models)
     set(list_models ${list_models}
     CACHE INTERNAL "List of all models")
