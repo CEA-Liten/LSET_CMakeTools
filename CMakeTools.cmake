@@ -10,14 +10,9 @@ function(python_venv PY_ENV PY_EXE)
     if (NOT EXISTS ${PY_ENV})
         message("create build environment: ${PY_ENV}")
         execute_process (COMMAND "${PY_EXE}" -m venv "${PY_ENV}" COMMAND_ERROR_IS_FATAL ANY)
-        set(ENV{VIRTUAL_ENV} "${PY_ENV}")
-        set(Python_FIND_VIRTUALENV FIRST)
-        unset(Python_EXECUTABLE)
-        find_package(Python COMPONENTS Interpreter Development)
-        set(PYENV_CREATE ON)
-        message("Python_EXECUTABLE: ${Python_EXECUTABLE}")
+        set(PY_VENV_FORCE ON)        
     endif()
-    if (${PYVENV_FORCE} OR ${PYENV_CREATE})
+    if (${PYVENV_FORCE})
         if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
 	        set(PythonPipCMD ${PY_ENV}/scripts/pip)
             set(PythonCMD ${PY_ENV}/scripts/python)
@@ -26,8 +21,7 @@ function(python_venv PY_ENV PY_EXE)
             set(PythonCMD ${PY_ENV}/bin/python)
         endif()
         
-        if (EXISTS ${PYVENV_REQS}) 
-            message("PythonPipCMD: ${PythonPipCMD}")           
+        if (EXISTS ${PYVENV_REQS})            
             execute_process(COMMAND ${PythonPipCMD} install -r "${PYVENV_REQS}")
         endif()
         if (PYVENV_PCK)                   
@@ -42,7 +36,74 @@ function(python_venv PY_ENV PY_EXE)
     endif()
 endfunction()
 
+function(python_venv2 PY_ENV PY_EXE PY_REQS)
+ 
+    # create virtual environment
+    add_custom_command(OUTPUT ${PY_ENV}
+         COMMENT "Create and initialize Python's virtual environment."
+         DEPENDS
+             ${PY_REQS}
+         # command batch
+         COMMAND ${PY_EXE} -m venv ${PY_ENV}
+         COMMAND
+    "$<IF:$<PLATFORM_ID:Windows>,${PY_ENV}/Scripts/activate,source;${PY_ENV}/bin/activate>"
+         COMMAND python -m ensurepip
+         COMMAND python -m pip install --upgrade pip
+         COMMAND pip install wheel --upgrade
+         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
+         COMMAND pip install --no-cache-dir -r requirements.txt --upgrade
+         COMMAND
+    "$<IF:$<PLATFORM_ID:Windows>,${PY_ENV}/Scripts/deactivate,deactivate>"
+         COMMAND_EXPAND_LISTS
+    )
 
+    # the target for Python's virtual environment 
+    add_custom_target(${COMPONENT}-pyenv
+        COMMENT "Setup Python's virtual environment."
+        DEPENDS ${PY_ENV}
+    )
+
+endfunction()
+
+function(python_venv3 PY_ENV PY_EXE PY_REQS)
+    message(STATUS "Start virtual environment setup done at ${PY_ENV} with dependencies from ${PY_REQS}")
+    # check if the virtual environment already exists
+    if(EXISTS ${PY_ENV})
+        message(STATUS "Virtual environment already exists in ${PY_ENV}, skipping creation.")
+        return()
+    endif()
+    # ensure that the given requirements.txt file exists
+    if(NOT EXISTS ${PY_REQS})
+        message(FATAL_ERROR "Requirements file not found: ${PY_REQS}")
+    endif()
+    # create the virtual environment
+    execute_process(
+        COMMAND ${PY_EXE} -m venv ${PY_ENV}
+        RESULT_VARIABLE venv_creation_ret_code
+    )
+    # report error if return code is non-zero
+    if(venv_creation_ret_code)
+        message(FATAL_ERROR "Failed to create virtual environment at ${PY_ENV}!")
+    endif()
+    # install dependencies from requirements.txt
+    if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
+        execute_process(
+            COMMAND ${PY_ENV}/Scripts/pip install -r ${PY_REQS}
+            RESULT_VARIABLE pip_install_ret_code
+        )
+    else()
+        execute_process(
+            COMMAND ${PY_ENV}/bin/pip install -r ${PY_REQS}
+            RESULT_VARIABLE pip_install_ret_code
+        )
+    endif()
+    # report error if return code is non-zero
+    if(pip_install_ret_code)
+        message(FATAL_ERROR "Failed to install dependencies from ${PY_REQS}!")
+    endif()
+    # print success message
+    message(STATUS "Virtual environment setup done at ${PY_ENV} with dependencies from ${PY_REQS}")
+endfunction()
 
 function(collect_files)
 

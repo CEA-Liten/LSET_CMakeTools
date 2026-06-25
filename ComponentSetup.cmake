@@ -105,6 +105,17 @@ function(create_component COMPONENT)
     #COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION      
   )
    
+   # ============= Profiling =============
+  if (WITH_PROFILING)
+    target_compile_definitions(${COMPONENT}
+      PRIVATE
+        ENABLE_PROFILING=1
+    )
+    if (WIN32)
+      target_link_libraries(${COMPONENT} PRIVATE Psapi)
+    endif()
+  endif()
+
 endfunction()
 
 
