@@ -88,16 +88,27 @@ function(python_venv3 PY_ENV PY_EXE PY_REQS)
     # install dependencies from requirements.txt
     if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
         execute_process(
+            COMMAND ${PY_ENV}/Scripts/activate       
+            RESULT_VARIABLE py_activate_ret_code
+        )
+        execute_process(
             COMMAND ${PY_ENV}/Scripts/pip install -r ${PY_REQS}
             RESULT_VARIABLE pip_install_ret_code
         )
     else()
+        execute_process(
+            COMMAND ${PY_ENV}/bin/activate       
+            RESULT_VARIABLE py_activate_ret_code
+        )
         execute_process(
             COMMAND ${PY_ENV}/bin/pip install -r ${PY_REQS}
             RESULT_VARIABLE pip_install_ret_code
         )
     endif()
     # report error if return code is non-zero
+     if(py_activate_ret_code)
+        message(FATAL_ERROR "Failed to activate ${PY_REQS}!")
+    endif()
     if(pip_install_ret_code)
         message(FATAL_ERROR "Failed to install dependencies from ${PY_REQS}!")
     endif()
