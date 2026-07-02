@@ -39,30 +39,54 @@ endfunction()
 function(python_venv2 PY_ENV PY_EXE PY_REQS)
  
     # create virtual environment
-    add_custom_command(OUTPUT ${PY_ENV}
+    if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)  
+        add_custom_command(OUTPUT ${PY_ENV}
          COMMENT "Create and initialize Python's virtual environment."
          DEPENDS
              ${PY_REQS}
          # command batch
          COMMAND ${PY_EXE} -m venv ${PY_ENV}
-         COMMAND
-    "$<IF:$<PLATFORM_ID:Windows>,${PY_ENV}/Scripts/activate,source;${PY_ENV}/bin/activate>"
-         COMMAND python -m ensurepip
+         COMMAND ${PY_ENV}/Scripts/activate.bat    
+         COMMAND python -m ensurepip    
          COMMAND python -m pip install --upgrade pip
          COMMAND pip install wheel --upgrade
          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
          COMMAND pip install --no-cache-dir -r requirements.txt --upgrade
-         COMMAND
-    "$<IF:$<PLATFORM_ID:Windows>,${PY_ENV}/Scripts/deactivate,deactivate>"
+         COMMAND ${PY_ENV}/Scripts/deactivate.bat    
+         COMMAND_EXPAND_LISTS
+        )
+    else()
+        add_custom_command(OUTPUT ${PY_ENV}
+         COMMENT "Create and initialize Python's virtual environment."
+         DEPENDS
+             ${PY_REQS}
+         # command batch
+         COMMAND ${PY_EXE} -m venv ${PY_ENV}
+         COMMAND source;${PY_ENV}/bin/activate                      
+         COMMAND pip install wheel --upgrade
+         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
+         COMMAND pip install --no-cache-dir -r requirements.txt --upgrade
+         COMMAND deactivate
+    "$<IF:$<PLATFORM_ID:Windows>,${PY_ENV}/Scripts/deactivate.bat,>"
          COMMAND_EXPAND_LISTS
     )
+    endif()
+    
 
     # the target for Python's virtual environment 
-    add_custom_target(${COMPONENT}-pyenv
+    add_custom_target(${COMPONENT}-pyenv ALL
         COMMENT "Setup Python's virtual environment."
         DEPENDS ${PY_ENV}
     )
 
+    # change Python_EXECUTABLE, its the python of the virtual environment
+    if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)        
+        set(Python_BIN ${PY_ENV}/scripts)
+    else()
+        set(Python_BIN ${PY_ENV}/bin)
+    endif()
+    set(Python_EXECUTABLE ${Python_BIN}/python PARENT_SCOPE)
+    set(Python_BIN ${Python_BIN} PARENT_SCOPE)
 endfunction()
 
 function(python_venv3 PY_ENV PY_EXE PY_REQS)
@@ -88,13 +112,14 @@ function(python_venv3 PY_ENV PY_EXE PY_REQS)
     # install dependencies from requirements.txt
     if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
         execute_process(
-            COMMAND ${PY_ENV}/Scripts/activate       
+            COMMAND ${PY_ENV}/Scripts/activate.bat     
             RESULT_VARIABLE py_activate_ret_code
         )
         execute_process(
             COMMAND ${PY_ENV}/Scripts/pip install -r ${PY_REQS}
             RESULT_VARIABLE pip_install_ret_code
         )
+        set(Python_EXECUTABLE ${PY_ENV}/Scripts/python)
     else()
         execute_process(
             COMMAND ${PY_ENV}/bin/activate       
@@ -104,10 +129,11 @@ function(python_venv3 PY_ENV PY_EXE PY_REQS)
             COMMAND ${PY_ENV}/bin/pip install -r ${PY_REQS}
             RESULT_VARIABLE pip_install_ret_code
         )
+        set(Python_EXECUTABLE ${PY_ENV}/bin/python)
     endif()
     # report error if return code is non-zero
      if(py_activate_ret_code)
-        message(FATAL_ERROR "Failed to activate ${PY_REQS}!")
+        message(FATAL_ERROR "Failed to activate ${PY_ENV}!")
     endif()
     if(pip_install_ret_code)
         message(FATAL_ERROR "Failed to install dependencies from ${PY_REQS}!")

@@ -74,11 +74,20 @@ function(add_genericTestCase _TEST_NAME _TESTUNIT_NAME )
 	# Add the test in the pipeline
 	add_test(NAME ${FULL_TESTNAME} COMMAND ${command} ${_TESTUNIT_ARG} WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 	set_property(TEST "${FULL_TESTNAME}" PROPERTY LABELS TESTLABEL ${COMPONENT})
-	set_tests_properties(
-		${FULL_TESTNAME}
-		PROPERTIES
-		ENVIRONMENT "CAIRN_BIN=${CMAKE_SOURCE_DIR}/bin/${PRESETNAME}/bin"		
-	)	
+
+	if(CMAKE_SYSTEM_NAME MATCHES Windows)
+		set_tests_properties(
+			${FULL_TESTNAME}
+			PROPERTIES
+			ENVIRONMENT "CAIRN_BIN=${CMAKE_SOURCE_DIR}/bin/${PRESETNAME}/bin"		
+		)
+	else()
+		set_tests_properties(
+			${FULL_TESTNAME}
+			PROPERTIES
+			ENVIRONMENT "CAIRN_BIN=${CMAKE_SOURCE_DIR}/bin/${PRESETNAME}/lib"		
+		)
+	endif()
 	message("add test ${FULL_TESTNAME}, ${_TESTUNIT_ARG}")
 	
 endfunction()
