@@ -57,7 +57,8 @@ function(add_tests SOURCE_DIR)
 endfunction()
 
 function(add_genericTestCase _TEST_NAME _TESTUNIT_NAME )
-	set(oneValueArgs ARG GROUP)	
+	set(oneValueArgs GROUP)	
+	set(multiValueArgs ARG)	
 	cmake_parse_arguments(_TESTUNIT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
 
 	# -- set test command --
@@ -257,11 +258,23 @@ function(add_genericTestSuite TESTSUITE_DIR TESTSUITE_NAME)
 		set(TEST_NAME ${TESTSUITE_NAME})
 		if (_FILES_LEN GREATER 1)
 			set(TEST_NAME ${TESTSUITE_NAME}_${_file})
-		endif()						
-		add_genericTestCase(GenericTests ${TEST_NAME}
-			ARG --case:${TESTSUITE_DIR}/${_file}.json
-			GROUP tnr
-		)
+		endif()	
+		set(_TEST_SKIP OFF)
+		set(_TEST_REFSUFFIX "Ref")
+		if (EXISTS ${TESTSUITE_DIR}/${_file}.ini)
+			file(READ ${TESTSUITE_DIR}/${_file}.ini _TEST_INI)
+			if (UNIX)
+				read_ConfigTest(${_TEST_INI} "Linux")
+			else()
+				read_ConfigTest(${_TEST_INI} "Windows")
+			endif()
+		endif()
+		if (NOT _TEST_SKIP)
+			add_genericTestCase(GenericTests ${TEST_NAME}
+				ARG --case:${TESTSUITE_DIR}/${_file}.json --refsuffix:${_TEST_REFSUFFIX}
+				GROUP tnr
+			)
+		endif()
 	endforeach()
 
 	# loop on subdirectories	
@@ -282,4 +295,22 @@ function(add_genericTests TESTS_SUBDIR)
 	foreach(_tnr ${TEST_DIRS})
 		add_genericTestSuite(${CAIRNTESTS_HOME}/${TESTS_SUBDIR}/${_tnr} ${_tnr})
 	endforeach()
+endfunction()
+
+# read test configuration file
+function(read_ConfigTest _TEST_INI _TEST_PLATFORM)
+	string(JSON _TEST_CFG ERROR_VARIABLE _TEST_CFG_ERR GET "${_TEST_INI}" ${_TEST_PLATFORM})
+	string(FIND ${_TEST_CFG} "NOTFOUND" _TEST_CFG_FIND)
+	if ("${_TEST_CFG_FIND}" STREQUAL "-1")
+		string(JSON _TEST_SKIP ERROR_VARIABLE _TEST_CFG_ERR GET "${_TEST_CFG}" "skip")
+		string(FIND ${_TEST_SKIP} "NOTFOUND" _TEST_SKIP_FIND)
+		if ("${_TEST_SKIP_FIND}" STREQUAL "-1")
+			set(_TEST_SKIP ${_TEST_SKIP} PARENT_SCOPE)
+		endif()
+		string(JSON _TEST_REFSUFFIX ERROR_VARIABLE _TEST_CFG_ERR GET "${_TEST_CFG}" "refSuffix")
+		string(FIND ${_TEST_REFSUFFIX} "NOTFOUND" _TEST_SKIP_FIND)
+		if ("${_TEST_SKIP_FIND}" STREQUAL "-1")
+			set(_TEST_REFSUFFIX ${_TEST_REFSUFFIX} PARENT_SCOPE)
+		endif()
+	endif()
 endfunction()

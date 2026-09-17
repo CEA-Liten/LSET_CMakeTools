@@ -1,84 +1,121 @@
 #
 # Some convenience macros
 #
-function(python_venv PY_ENV PY_EXE)
-    set(options FORCE)
+function(python_venv PY_ENV PY_EXE)   
     set(oneValueArgs REQS PCK)
     cmake_parse_arguments(PYVENV "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-    message("PYVENV_FORCE: ${PYVENV_FORCE}")    
     # create virtual environment if not exist
     if (NOT EXISTS ${PY_ENV})
-        message("create build environment: ${PY_ENV}")
+        message("Create and initialize Python's virtual environment: ${PY_ENV}")
         execute_process (COMMAND "${PY_EXE}" -m venv "${PY_ENV}" COMMAND_ERROR_IS_FATAL ANY)
-        set(PY_VENV_FORCE ON)        
+              
+    endif()   
+     # change Python_EXECUTABLE, its the python of the virtual environment
+    if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)        
+        set(Python_BIN ${PY_ENV}/scripts)
+    else()
+        set(Python_BIN ${PY_ENV}/bin)
     endif()
-    if (${PYVENV_FORCE})
-        if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)
-	        set(PythonPipCMD ${PY_ENV}/scripts/pip)
-            set(PythonCMD ${PY_ENV}/scripts/python)
-        else()
-	        set(PythonPipCMD ${PY_ENV}/bin/pip)
-            set(PythonCMD ${PY_ENV}/bin/python)
-        endif()
-        
-        if (EXISTS ${PYVENV_REQS})            
-            execute_process(COMMAND ${PythonPipCMD} install -r "${PYVENV_REQS}")
-        endif()
-        if (PYVENV_PCK)                   
-            #execute_process(
-            #    COMMAND ${PythonCMD} -c "import ${PYVENV_PCK}"
-            #    RESULT_VARIABLE EXIT_CODE
-            #    OUTPUT_QUIET
-            #)
-            #message("install PYVENV_PCK: ${EXIT_CODE}")
-            execute_process(COMMAND ${PythonPipCMD} install ${PYVENV_PCK})
-        endif()
+    set(Python_EXECUTABLE ${Python_BIN}/python PARENT_SCOPE)
+    set(Python_BIN ${Python_BIN} PARENT_SCOPE)
+                
+    if (EXISTS ${PYVENV_REQS})            
+        execute_process(COMMAND ${Python_BIN}/pip install -r "${PYVENV_REQS}")
     endif()
+    if (PYVENV_PCK)                   
+        execute_process(COMMAND ${Python_BIN}/pip install ${PYVENV_PCK})
+    endif()    
+    
 endfunction()
 
 function(python_venv2 PY_ENV PY_EXE PY_REQS)
- 
+    set(oneValueArgs PCK)
+    set(oneValueArgs TGT)
+    set(oneValueArgs REQS2)
+    cmake_parse_arguments(PY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    if (NOT PY_PCK)    
+        set(PY_PCK wheel --upgrade)
+    endif()
+    if (NOT PY_TGT)    
+        set(PY_TGT ${COMPONENT}-pyenv)
+    endif()
+    
     # create virtual environment
     if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)  
-        add_custom_command(OUTPUT ${PY_ENV}
-             COMMENT "Create and initialize Python's virtual environment ${PY_ENV}"
-             DEPENDS
-                 ${PY_REQS}
-             # command batch
-             COMMAND ${PY_EXE} -m venv ${PY_ENV}
-             COMMAND ${PY_ENV}/Scripts/activate.bat
-             COMMAND python -m ensurepip
-             COMMAND python -m pip install --upgrade pip
-             COMMAND pip install wheel --upgrade
-             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
-             COMMAND pip install --no-cache-dir -r requirements.txt --upgrade
-             COMMAND ${PY_ENV}/Scripts/deactivate.bat
-             COMMAND_EXPAND_LISTS
+        if (NOT PY_REQS2)  
+            add_custom_command(OUTPUT ${PY_ENV}
+                COMMENT "Create and initialize Python's virtual environment: ${PY_ENV}"
+                DEPENDS
+                    ${PY_REQS}
+                # command batch
+                COMMAND ${PY_EXE} -m venv ${PY_ENV}
+                COMMAND ${PY_ENV}/Scripts/activate.bat    
+                COMMAND python -m ensurepip    
+                COMMAND python -m pip install --upgrade pip             
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
+                COMMAND pip install --no-cache-dir -r requirements.txt --upgrade
+                COMMAND pip install ${PY_PCK}
+                COMMAND ${PY_ENV}/Scripts/deactivate.bat    
+                COMMAND_EXPAND_LISTS
             )
+        else()
+            add_custom_command(OUTPUT ${PY_ENV}
+                COMMENT "Create and initialize Python's virtual environment: ${PY_ENV}"
+                DEPENDS
+                    ${PY_REQS}
+                # command batch
+                COMMAND ${PY_EXE} -m venv ${PY_ENV}
+                COMMAND ${PY_ENV}/Scripts/activate.bat    
+                COMMAND python -m ensurepip    
+                COMMAND python -m pip install --upgrade pip             
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS2} reqs2.txt
+                COMMAND pip install --no-cache-dir -r requirements.txt -r reqs2.txt --upgrade
+                COMMAND pip install ${PY_PCK}
+                COMMAND ${PY_ENV}/Scripts/deactivate.bat    
+                COMMAND_EXPAND_LISTS
+            )
+        endif()
     else()
-        add_custom_command(OUTPUT ${PY_ENV}
-             COMMENT "Create and initialize Python's virtual environment ${PY_ENV}"
-             DEPENDS
-                 ${PY_REQS}
-             # command batch
-             COMMAND ${PY_EXE} -m venv ${PY_ENV}
-             COMMAND . ${PY_ENV}/bin/activate                 
-             COMMAND ${PY_ENV}/bin/pip install wheel --upgrade
-             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
-             COMMAND ${PY_ENV}/bin/pip install --no-cache-dir -r requirements.txt --upgrade
-             #COMMAND deactivate    
-             COMMAND_EXPAND_LISTS
-        )
+        if (NOT PY_REQS2) 
+            add_custom_command(OUTPUT ${PY_ENV}
+                COMMENT "Create and initialize Python's virtual environment: ${PY_ENV}"
+                DEPENDS
+                    ${PY_REQS}
+                # command batch
+                COMMAND ${PY_EXE} -m venv ${PY_ENV}
+                COMMAND . ${PY_ENV}/bin/activate                              
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
+                COMMAND ${PY_ENV}/bin/pip install --no-cache-dir -r requirements.txt --upgrade
+                COMMAND ${PY_ENV}/bin/pip install ${PY_PCK}
+                #COMMAND deactivate    
+                COMMAND_EXPAND_LISTS
+            )
+        else()
+            add_custom_command(OUTPUT ${PY_ENV}
+                COMMENT "Create and initialize Python's virtual environment: ${PY_ENV}"
+                DEPENDS
+                    ${PY_REQS}
+                # command batch
+                COMMAND ${PY_EXE} -m venv ${PY_ENV}
+                COMMAND . ${PY_ENV}/bin/activate                              
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS} requirements.txt
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PY_REQS2} reqs2.txt
+                COMMAND ${PY_ENV}/bin/pip install --no-cache-dir -r requirements.txt -r reqs2.txt --upgrade
+                COMMAND ${PY_ENV}/bin/pip install ${PY_PCK}
+                #COMMAND deactivate    
+                COMMAND_EXPAND_LISTS
+            )
+        endif()
     endif()
-   
 
     # the target for Python's virtual environment 
-    add_custom_target(${COMPONENT}-pyenv ALL
+    add_custom_target(${PY_TGT} ALL
         COMMENT "Setup Python's virtual environment."
         DEPENDS ${PY_ENV}
     )
-
-     # change Python_EXECUTABLE, its the python of the virtual environment
+       
+    # change Python_EXECUTABLE, its the python of the virtual environment
     if(CMAKE_HOST_SYSTEM_NAME MATCHES Windows)        
         set(Python_BIN ${PY_ENV}/scripts)
     else()

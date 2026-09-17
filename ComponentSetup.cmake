@@ -141,24 +141,38 @@ function(component_install_setup COMPONENT)
     set(runtime_DESTINATION ${CMAKE_INSTALL_BINDIR})
   else()
     set(runtime_DESTINATION ${CMAKE_INSTALL_BINDIR}/${runtime_DESTINATION})
-  endif()
-  if("${runtime_LIBDIR}" STREQUAL "")
-    set(runtime_LIBDIR ${CMAKE_INSTALL_LIBDIR})
-  endif()
+  endif()  
   if("${runtime_INCLUDE}" STREQUAL "")
     set(runtime_INCLUDE ${PROJECT_NAME}/${COMPONENT})
+  endif()  
+  if("${runtime_LIBDIR}" STREQUAL "")
+    set(runtime_LIBDIR ${CMAKE_INSTALL_LIBDIR})
+  else()   
+    set(runtime_LIBDIR ${CMAKE_INSTALL_LIBDIR}/${runtime_LIBDIR})     
   endif()
-  
-  install(TARGETS ${COMPONENT}
-        EXPORT ${PROJECT_NAME}Targets
-        RUNTIME DESTINATION ${runtime_DESTINATION}    
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
-        ARCHIVE DESTINATION ${runtime_LIBDIR}
-        LIBRARY DESTINATION ${runtime_LIBDIR}    
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
-        RESOURCE DESTINATION resources
-        )
-  
+    
+  if (DEFINED PROJECT_LIBDIR) 
+        # particular case for pegase
+        install(TARGETS ${COMPONENT}
+            EXPORT ${PROJECT_NAME}Targets
+            RUNTIME DESTINATION ${runtime_DESTINATION}    
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
+            ARCHIVE DESTINATION ${runtime_LIBDIR}
+            LIBRARY DESTINATION ${runtime_DESTINATION}    
+            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
+            RESOURCE DESTINATION resources
+            )
+  else()
+        install(TARGETS ${COMPONENT}
+            EXPORT ${PROJECT_NAME}Targets
+            RUNTIME DESTINATION ${runtime_DESTINATION}    
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
+            ARCHIVE DESTINATION ${runtime_LIBDIR}
+            LIBRARY DESTINATION ${runtime_LIBDIR}    
+            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${runtime_INCLUDE}
+            RESOURCE DESTINATION resources
+            )
+  endif()
 
   
   #target_include_directories(${COMPONENT} INTERFACE
@@ -315,8 +329,8 @@ function(create_model MODELS)
         target_compile_definitions(${COMPONENT} PRIVATE -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
         target_compile_definitions(${COMPONENT} PRIVATE -DEIGEN_MPL2_ONLY)
 
-        if (WITH_PYBIND)
-        target_link_libraries(${COMPONENT} PRIVATE cairn::CairnCore)
+        if (WITH_PYBIND AND CAIRN_INSTALL)
+            target_link_libraries(${COMPONENT} PRIVATE cairn::CairnCore)
             target_link_libraries(${COMPONENT} PRIVATE cairn::CairnModelInterface)
         else()
             target_link_libraries(${COMPONENT} PRIVATE CAIRN::CAIRN)
@@ -331,7 +345,7 @@ function(create_model MODELS)
             foreach(_MODEL_LINK IN LISTS ${_NAMEMODEL}_LINKEDMODELS)
                 set(CAIRNMODEL_LINK ${_MODEL_LINK}${MODELS_SFX}) 
                 message("-- link ${CAIRNMODEL_LINK}") 
-                if (WITH_PYBIND)
+                if (WITH_PYBIND AND CAIRN_INSTALL)
                     target_link_libraries(${COMPONENT} PRIVATE cairn::${CAIRNMODEL_LINK})    
                 else()
                     target_link_libraries(${COMPONENT} PRIVATE CairnModels::${CAIRNMODEL_LINK})    

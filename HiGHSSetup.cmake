@@ -16,7 +16,7 @@ if(WITH_highs_INSTALL OR (NOT IS_INSTALLED))
 
   set(FETCHCONTENT_QUIET OFF) # verbose mode for fetchcontent. Comment/uncomment according to your needs.    
   set(HIGHS_GIT_REPOSITORY https://github.com/ERGO-Code/HiGHS) 
-  set(HIGHS_GIT_TAG  v1.8.0)
+  set(HIGHS_GIT_TAG  v1.15.1)
   
   if (DEPS_INSTALL AND EXISTS ${DEPS_ROOT})
       message(STATUS "HiGHS will be used from path ${DEPS_ROOT} and installed as a cairn component")  
@@ -28,7 +28,7 @@ if(WITH_highs_INSTALL OR (NOT IS_INSTALLED))
         GIT_REPOSITORY    ${HIGHS_GIT_REPOSITORY}
         GIT_TAG     ${HIGHS_GIT_TAG}
         GIT_SHALLOW TRUE
-        UPDATE_DISCONNECTED TRUE # Do not update git repo at each run
+        #UPDATE_DISCONNECTED TRUE # Do not update git repo at each run
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
@@ -55,10 +55,9 @@ if(WITH_highs_INSTALL OR (NOT IS_INSTALLED))
   set(USE_DOTNET_STD_21 OFF)
   FetchContent_MakeAvailable(highs)
       
-  #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-  set(HIGHS_VERSION 1.8.0 CACHE INTERNAL "Highs version") 
+  #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})  
   set(HIGHS_DIR ${CMAKE_INSTALL_PREFIX} CACHE INTERNAL "") 
-  message(STATUS "Built, installed and used highs, version ${HIGHS_VERSION} in ${HIGHS_DIR}.")
+  message(STATUS "Built, installed and used highs, ${HIGHS_GIT_TAG} in ${HIGHS_DIR}.")
   message(STATUS "highs_FOUND: ${highs_FOUND}") 
 
 else()        
