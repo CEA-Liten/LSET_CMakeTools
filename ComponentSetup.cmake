@@ -116,6 +116,13 @@ function(create_component COMPONENT)
     endif()
   endif()
 
+  set_property(TARGET ${COMPONENT} PROPERTY BUILD_RPATH_USE_ORIGIN TRUE)
+  set(CAIRN_INSTALL_LIBDIR "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}") 
+  set_property(TARGET ${COMPONENT} PROPERTY INSTALL_RPATH ${CAIRN_INSTALL_LIBDIR})
+  set_property(TARGET ${COMPONENT} PROPERTY BUILD_WITH_INSTALL_RPATH FALSE)
+  set_property(TARGET ${COMPONENT} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+
 endfunction()
 
 
@@ -352,6 +359,12 @@ function(create_model MODELS)
                 endif()                
             endforeach()            
         endif()
+
+        set_property(TARGET ${COMPONENT} PROPERTY BUILD_RPATH_USE_ORIGIN TRUE)
+        set(CAIRN_INSTALL_LIBDIR "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}") 
+        set_property(TARGET ${COMPONENT} PROPERTY INSTALL_RPATH ${CAIRN_INSTALL_LIBDIR})
+        set_property(TARGET ${COMPONENT} PROPERTY BUILD_WITH_INSTALL_RPATH FALSE)
+        set_property(TARGET ${COMPONENT} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
       # ---- Installation ----
         set(${COMPONENT}_INSTALL_INTERFACE_INCLUDE_DIRECTORIES
